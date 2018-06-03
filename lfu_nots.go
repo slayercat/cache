@@ -16,6 +16,9 @@ type LFUNoTS struct {
 	// currentSize holds the current item size in the list
 	// after each adding of item, currentSize will be increased
 	currentSize int
+
+	//called when evict
+	evictCallback func(string, interface{})
 }
 
 type cacheItem struct {
@@ -190,6 +193,10 @@ func (l *LFUNoTS) remove(ci *cacheItem, position *list.Element) {
 	}
 }
 
+func (l *LFUNoTS) SetRemoveCallback(f func(string, interface{})) {
+	l.evictCallback=f
+}
+
 // evict deletes the element from list with given linked list element
 func (l *LFUNoTS) evict(e *list.Element) error {
 	// ne need to return err if list element is already nil
@@ -201,6 +208,11 @@ func (l *LFUNoTS) evict(e *list.Element) error {
 	for entry := range e.Value.(*entry).listEntry {
 		l.cache.Delete(entry.k)
 		l.remove(entry, e)
+
+		if l.evictCallback != nil {
+			l.evictCallback(entry.k, entry.v)
+		}
+
 		l.currentSize--
 		break
 	}
